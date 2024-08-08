@@ -5,11 +5,13 @@ import Button from './componentes/Button';
 import IconButton from './componentes/IconButton';
 import CircleButton from './componentes/CircleButton';
 import * as ImagePicker from 'expo-image-picker';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import EmojiPicker from './componentes/EmojiPicker';
 import EmojiList from './componentes/EmojiList';
 import EmojiSticker from './componentes/EmojiSticker';
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import * as MediaLibrary from 'expo-media-library';
+import { captureRef } from 'react-native-view-shot';
 
 const PlaceholderImage = require('./assets/images/background-image.png');
 
@@ -17,7 +19,20 @@ export default function App() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [showAppOptions,setShowAppOptions] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  // Utilizamos el Hoock useRef() de React y creamos una variable imageRef
+  const imageRef = useRef();
   const [pickedEmoji, setPickedEmoji] = useState(null);
+  /* Crear una const para manejar el status del permiso de acceso a media
+  Cuando la aplicación se carga por primera vez y el estado del permiso 
+  no se concede ni se deniega, el valor del status es null. Cuando se le 
+  solicita permiso, un usuario puede otorgarlo o denegarlo. Podemos 
+  agregar una condición para verificar si es null, y si es así, active 
+  el requestPermission() método */
+  const [status, requestPermission] = MediaLibrary.usePermissions();
+  if (status === null) {
+    requestPermission();
+    //Una vez que se da el permiso, el valor de la status cambios a granted. 
+  }
 
   // Aquí se debería cargar la imagen desde un lugar y mostrarla en un ImageViewer.
   const pickImageAsync = async ()=>{
@@ -47,18 +62,32 @@ export default function App() {
   };
 
   const onSaveImageAsync = async () => {
-    //TODO: we will implement this later
+    try {
+      const localUri = await captureRef(imageRef, {
+        height: 440,
+        quality: 1,
+      });
+
+      await MediaLibrary.saveToLibraryAsync(localUri);
+      if (localUri) {
+        alert("Saved!");
+      }
+    } catch (e) {
+      console.log(e);
+    }
   };
 
   return (
     <GestureHandlerRootView style={styles.container}>
       <View style={styles.container}>
         <View style={styles.imageContainer}>
-          <ImageViewer 
-            placeholderImageSource={PlaceholderImage}
-            selectedImage={selectedImage}
-            />
-            {pickedEmoji && <EmojiSticker imageSize={40} stickerSource={pickedEmoji} />}
+          <View ref={imageRef} collapsable={false}>
+            <ImageViewer 
+              placeholderImageSource={PlaceholderImage}
+              selectedImage={selectedImage}
+              />
+              {pickedEmoji && <EmojiSticker imageSize={40} stickerSource={pickedEmoji} />}
+          </View>
           {showAppOptions ? (
             <View style={styles.optionsContainer}>
               <View style={styles.optionsRow}>
